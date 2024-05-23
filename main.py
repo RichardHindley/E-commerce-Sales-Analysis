@@ -1,22 +1,23 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Load the dataset
 df = pd.read_excel('/Users/richardhindley/E-commerce-Sales-Analysis/Online Retail.xlsx')
-print(df.head())
 
-# Remove rows with missing values
-df = df.dropna()
+# Check data types
+print(df.dtypes)
 
-# Convert columns to appropriate data types
-df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
-df['CustomerID'] = df['CustomerID'].astype(int)
+# Convert UnitPrice to numeric if necessary
+df['UnitPrice'] = pd.to_numeric(df['UnitPrice'], errors='coerce')
 
-print(df.info())
+# Check for missing or zero values in UnitPrice
+print(df['UnitPrice'].isnull().sum())
+print((df['UnitPrice'] == 0).sum())
 
-print(df.describe())
-
-import matplotlib.pyplot as plt
-import seaborn as sns
+# Remove rows with missing or zero values in UnitPrice
+df = df[df['UnitPrice'] > 0]
+df = df.dropna(subset=['UnitPrice'])
 
 # Plot the distribution of unit prices
 plt.figure(figsize=(10, 6))
@@ -26,20 +27,24 @@ plt.xlabel('Unit Price')
 plt.ylabel('Frequency')
 plt.show()
 
-# Plot the number of transactions over time
+# Further EDA: Plot the number of transactions over time
 plt.figure(figsize=(14, 7))
-df['InvoiceDate'].groupby(df['InvoiceDate'].dt.to_period('M')).count().plot(kind='bar')
+df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+df.set_index('InvoiceDate', inplace=True)
+df.resample('M').size().plot(kind='bar')
 plt.title('Number of Transactions Over Time')
 plt.xlabel('Month')
 plt.ylabel('Number of Transactions')
 plt.show()
 
+# RFM Analysis
 import datetime as dt
 
 # Define the reference date
 reference_date = dt.datetime(2011, 12, 10)
 
 # Calculate RFM values
+df['TotalAmount'] = df['Quantity'] * df['UnitPrice']
 rfm = df.groupby('CustomerID').agg({
     'InvoiceDate': lambda x: (reference_date - x.max()).days,
     'InvoiceNo': 'count',
@@ -65,5 +70,3 @@ plt.title('Distribution of RFM Scores')
 plt.xlabel('RFM Score')
 plt.ylabel('Number of Customers')
 plt.show()
-
-
